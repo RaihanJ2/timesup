@@ -1,6 +1,7 @@
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
+import { IAlarm } from "../types";
 
-const AlarmSchema = new mongoose.Schema({
+const AlarmSchema = new Schema({
   hours: {
     type: String,
     required: true,
@@ -27,7 +28,7 @@ const AlarmSchema = new mongoose.Schema({
     default: true,
   },
   userId: {
-    type: String, // Changed from ObjectId to String
+    type: String,
     required: true,
   },
   createdAt: {
@@ -36,5 +37,6 @@ const AlarmSchema = new mongoose.Schema({
   },
 });
 
-const Alarm = mongoose.models.Alarm || mongoose.model("Alarm", AlarmSchema);
+const Alarm = mongoose.model<IAlarm>("Alarm", AlarmSchema);
+
 export default Alarm;

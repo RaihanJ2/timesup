@@ -50,17 +50,12 @@ const TaskTimer = () => {
   const [newTaskText, setNewTaskText] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [progress, setProgress] = useState(100);
-  const intervalRef = useRef(null);
 
-  // Timer presets in seconds - dynamic based on settings
+  // Timer presets in seconds - based on settings
   const timerPresets = {
     Pomodoro: pomodoroSettings.workDuration * 60,
     "Short Break": pomodoroSettings.shortBreakDuration * 60,
     "Long Break": pomodoroSettings.longBreakDuration * 60,
-    "1 min": 1 * 60,
-    "5 min": 5 * 60,
-    "10 min": 10 * 60,
-    "15 min": 15 * 60,
   };
 
   // Calculate total seconds from the timeLeft object
@@ -115,6 +110,13 @@ const TaskTimer = () => {
 
   // Toggle timer start/pause
   const toggleTimer = () => {
+    if (!isActive && currentTaskId === null && tasks.length > 0) {
+      // If starting timer with no task selected, select the first non-completed task
+      const firstIncompletedTask = tasks.find((task) => !task.completed);
+      if (firstIncompletedTask) {
+        setCurrentTask(firstIncompletedTask.id);
+      }
+    }
     setTimerActive(!isActive);
   };
 
@@ -124,6 +126,7 @@ const TaskTimer = () => {
     setTimer(timerType);
   };
 
+  // Handle timer completion and automatic transition
   const handleTimerComplete = () => {
     // Stop the timer first
     setTimerActive(false);
@@ -144,11 +147,9 @@ const TaskTimer = () => {
     }
 
     // Handle state updates based on current timer type
-    if (timerType === "Pomodoro") {
-      // Only increment completed sessions if there's a task
-      if (currentTaskId) {
-        incrementCompletedSession(currentTaskId);
-      }
+    if (timerType === "Pomodoro" && currentTaskId) {
+      // Update completed sessions count for the task
+      incrementCompletedSession(currentTaskId);
 
       // Increment pomodoro count for sequence tracking
       const newCount = pomodoroCount + 1;
@@ -164,6 +165,7 @@ const TaskTimer = () => {
 
         // Use timeout to ensure state changes are processed
         setTimeout(() => {
+          // Call our improved setTimer function
           setTimer(nextTimerType);
         }, 500);
       }
@@ -339,12 +341,11 @@ const TaskTimer = () => {
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <Container className="flex flex-col justify-evenly h-fit">
-      <div className="w-full flex flex-row items-center justify-between px-2 rounded-t border-b-2 border-gray-800">
-        <div className="flex flex-row items-center">
-          {Object.keys(timerPresets)
-            .slice(0, 3)
-            .map((type) => (
+    <div className="flex flex-row h-full">
+      <Container className="flex flex-col justify-evenly h-fit">
+        <div className="w-full flex flex-row items-center justify-between px-2 rounded-t border-b-2 border-gray-800">
+          <div className="flex flex-row items-center">
+            {Object.keys(timerPresets).map((type) => (
               <div
                 key={type}
                 className={`cursor-pointer hover:bg-gray-600 p-3 h-full ${
@@ -355,317 +356,319 @@ const TaskTimer = () => {
                 {type}
               </div>
             ))}
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="autoPomodoro"
-              checked={autoPomodoro}
-              onChange={() => setAutoPomodoro(!autoPomodoro)}
-              className="h-4 w-4"
-            />
-            <label htmlFor="autoPomodoro" className="text-sm">
-              Auto Pomodoro
-            </label>
           </div>
 
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="p-2 hover:bg-gray-700 rounded-full"
-          >
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="autoPomodoro"
+                checked={autoPomodoro}
+                onChange={() => setAutoPomodoro(!autoPomodoro)}
+                className="h-4 w-4"
+              />
+              <label htmlFor="autoPomodoro" className="text-sm">
+                Auto Pomodoro
+              </label>
+            </div>
+
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2 hover:bg-gray-700 rounded-full"
+            >
+              <motion.div
+                animate={{
+                  rotate: showSettings ? 180 : 0,
+                  scale: showSettings ? 1.1 : 1,
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 10,
+                }}
+              >
+                <Settings size={18} />
+              </motion.div>
+            </button>
+          </div>
+        </div>
+        <motion.div
+          initial={false}
+          animate={{
+            opacity: showSettings ? 1 : 0,
+            height: showSettings ? "auto" : 0,
+            marginBottom: showSettings ? "1rem" : 0,
+            transformOrigin: "top center",
+          }}
+          transition={{
+            type: "spring",
+            bounce: 0.1,
+            duration: 0.5,
+            opacity: { duration: 0.2 },
+          }}
+          className="overflow-hidden bg-gray-800 rounded-md"
+          style={{
+            pointerEvents: showSettings ? "auto" : "none",
+          }}
+        >
+          {/* Settings Panel */}
+          {showSettings && (
             <motion.div
-              animate={{
-                rotate: showSettings ? 180 : 0,
-                scale: showSettings ? 1.1 : 1,
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 400,
-                damping: 10,
-              }}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ type: "spring", stiffness: 300 }}
+              className="p-4"
             >
-              <Settings size={18} />
-            </motion.div>
-          </button>
-        </div>
-      </div>
-      <motion.div
-        initial={false}
-        animate={{
-          opacity: showSettings ? 1 : 0,
-          height: showSettings ? "auto" : 0,
-          marginBottom: showSettings ? "1rem" : 0,
-          transformOrigin: "top center",
-        }}
-        transition={{
-          type: "spring",
-          bounce: 0.1,
-          duration: 0.5,
-          opacity: { duration: 0.2 },
-        }}
-        className="overflow-hidden bg-gray-800 rounded-md"
-        style={{
-          pointerEvents: showSettings ? "auto" : "none",
-        }}
-      >
-        {/* Settings Panel */}
-        {showSettings && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ type: "spring", stiffness: 300 }}
-            className="p-4"
-          >
-            <h3 className="font-bold mb-3">Pomodoro Settings</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-sm text-gray-300">
-                  Work Duration (minutes)
-                </label>
-                <input
-                  type="number"
-                  value={pomodoroSettings.workDuration}
-                  onChange={(e) =>
-                    handleSettingUpdate("workDuration", Number(e.target.value))
-                  }
-                  className="w-full p-2 bg-gray-700 rounded mt-1"
-                  min="1"
-                  max="60"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-300">
-                  Short Break (minutes)
-                </label>
-                <input
-                  type="number"
-                  value={pomodoroSettings.shortBreakDuration}
-                  onChange={(e) =>
-                    handleSettingUpdate(
-                      "shortBreakDuration",
-                      Number(e.target.value)
-                    )
-                  }
-                  className="w-full p-2 bg-gray-700 rounded mt-1"
-                  min="1"
-                  max="30"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-300">
-                  Long Break (minutes)
-                </label>
-                <input
-                  type="number"
-                  value={pomodoroSettings.longBreakDuration}
-                  onChange={(e) =>
-                    handleSettingUpdate(
-                      "longBreakDuration",
-                      Number(e.target.value)
-                    )
-                  }
-                  className="w-full p-2 bg-gray-700 rounded mt-1"
-                  min="1"
-                  max="60"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-300">
-                  Long Break After (pomodoros)
-                </label>
-                <input
-                  type="number"
-                  value={pomodoroSettings.longBreakInterval}
-                  onChange={(e) =>
-                    handleSettingUpdate(
-                      "longBreakInterval",
-                      Number(e.target.value)
-                    )
-                  }
-                  className="w-full p-2 bg-gray-700 rounded mt-1"
-                  min="1"
-                  max="10"
-                />
-              </div>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="autoStartBreaks"
-                  checked={pomodoroSettings.autoStartBreaks}
-                  onChange={() =>
-                    handleSettingUpdate(
-                      "autoStartBreaks",
-                      !pomodoroSettings.autoStartBreaks
-                    )
-                  }
-                  className="h-4 w-4 mr-2"
-                />
-                <label htmlFor="autoStartBreaks">Auto-start breaks</label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="autoStartPomodoros"
-                  checked={pomodoroSettings.autoStartPomodoros}
-                  onChange={() =>
-                    handleSettingUpdate(
-                      "autoStartPomodoros",
-                      !pomodoroSettings.autoStartPomodoros
-                    )
-                  }
-                  className="h-4 w-4 mr-2"
-                />
-                <label htmlFor="autoStartPomodoros">Auto-start pomodoros</label>
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={() => setShowSettings(false)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
-              >
-                Done
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </motion.div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full px-2 py-4">
-        {/* Timer Section with Circular Progress */}
-        <div className="flex flex-col items-center justify-center">
-          <div className="relative w-64 h-64 flex items-center justify-center">
-            {/* SVG Circle Progress */}
-            <svg className="absolute w-full h-full" viewBox="0 0 264 264">
-              {/* Background circle */}
-              <circle
-                cx="132"
-                cy="132"
-                r={radius}
-                fill="transparent"
-                stroke="#1F2937" // gray-800
-                strokeWidth="8"
-              />
-              {/* Progress circle */}
-              <circle
-                cx="132"
-                cy="132"
-                r={radius}
-                fill="transparent"
-                stroke={timerColor}
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                transform="rotate(-90 132 132)"
-                style={{ transition: "stroke-dashoffset 0.5s ease" }}
-              />
-            </svg>
-
-            {/* Timer text in the middle */}
-            <div className="z-10 flex flex-col items-center justify-center">
-              <div className="text-5xl flex items-center justify-center">
-                <span className="font-bold">
-                  {formatTime(timeLeft.minutes)}
-                </span>
-                <span className="font-bold">:</span>
-                <span className="font-bold">
-                  {formatTime(timeLeft.seconds)}
-                </span>
-              </div>
-              {timeLeft.hours > 0 && (
-                <div className="text-sm mt-1">
-                  +{timeLeft.hours} {timeLeft.hours === 1 ? "hour" : "hours"}
+              <h3 className="font-bold mb-3">Pomodoro Settings</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm text-gray-300">
+                    Work Duration (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    value={pomodoroSettings.workDuration}
+                    onChange={(e) =>
+                      handleSettingUpdate(
+                        "workDuration",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="w-full p-2 bg-gray-700 rounded mt-1"
+                    min="1"
+                    max="60"
+                  />
                 </div>
-              )}
-              <div className="text-md mt-2 font-medium">{timerType}</div>
-            </div>
-          </div>
-
-          {currentTaskId ? (
-            <div className="mt-4 p-2 bg-gray-700 rounded-md text-center">
-              Working on: {tasks.find((t) => t.id === currentTaskId)?.text}
-            </div>
-          ) : (
-            <div className="mt-4 p-2 bg-gray-700 rounded-md text-center text-gray-400">
-              No task selected
-            </div>
-          )}
-
-          {autoPomodoro && (
-            <div className="mt-2 text-sm text-gray-400">
-              Pomodoro{" "}
-              {(pomodoroCount % pomodoroSettings.longBreakInterval) + 1}
-              &nbsp; of &nbsp;{pomodoroSettings.longBreakInterval} • Next:{" "}
-              {timerType === "Pomodoro"
-                ? (pomodoroCount + 1) % pomodoroSettings.longBreakInterval === 0
-                  ? "Long Break"
-                  : "Short Break"
-                : "Pomodoro"}
-            </div>
-          )}
-
-          <div className="mt-6 flex flex-row gap-6 items-center justify-center">
-            <button
-              className="w-12 h-12 p-2 bg-gray-800 hover:bg-gray-700 rounded-full active:scale-95 hover:scale-105 flex items-center justify-center"
-              onClick={toggleTimer}
-            >
-              {isActive ? <Pause size={24} /> : <Play size={24} />}
-            </button>
-            <button
-              className="w-12 h-12 p-2 bg-gray-800 hover:bg-gray-700 rounded-full active:scale-95 hover:scale-105 flex items-center justify-center"
-              onClick={resetTimer}
-            >
-              <RotateCcw size={24} />
-            </button>
-            {autoPomodoro && (
-              <button
-                className="text-sm py-1 px-3 bg-gray-800 hover:bg-gray-600 rounded active:scale-95"
-                onClick={resetPomodoroSequence}
-              >
-                Reset Sequence
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Tasks Section */}
-        <div className="flex flex-col h-full bg-gray-800 p-4 rounded-lg">
-          <h2 className="text-xl font-bold mb-3">Tasks</h2>
-
-          {/* Add new task */}
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              value={newTaskText}
-              onChange={(e) => setNewTaskText(e.target.value)}
-              placeholder="Add a new task..."
-              className="flex-1 p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAddTask();
-              }}
-            />
-            <button
-              onClick={handleAddTask}
-              className="p-2 bg-blue-600 hover:bg-blue-700 rounded"
-            >
-              <Plus size={20} />
-            </button>
-          </div>
-
-          {/* Task list */}
-          <div className="flex-1 overflow-y-auto">
-            {tasks.length === 0 ? (
-              <div className="text-gray-400 text-center py-4">
-                No tasks yet. Add one to get started!
+                <div>
+                  <label className="text-sm text-gray-300">
+                    Short Break (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    value={pomodoroSettings.shortBreakDuration}
+                    onChange={(e) =>
+                      handleSettingUpdate(
+                        "shortBreakDuration",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="w-full p-2 bg-gray-700 rounded mt-1"
+                    min="1"
+                    max="30"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-300">
+                    Long Break (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    value={pomodoroSettings.longBreakDuration}
+                    onChange={(e) =>
+                      handleSettingUpdate(
+                        "longBreakDuration",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="w-full p-2 bg-gray-700 rounded mt-1"
+                    min="1"
+                    max="60"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-300">
+                    Long Break After (pomodoros)
+                  </label>
+                  <input
+                    type="number"
+                    value={pomodoroSettings.longBreakInterval}
+                    onChange={(e) =>
+                      handleSettingUpdate(
+                        "longBreakInterval",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="w-full p-2 bg-gray-700 rounded mt-1"
+                    min="1"
+                    max="10"
+                  />
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="autoStartBreaks"
+                    checked={pomodoroSettings.autoStartBreaks}
+                    onChange={() =>
+                      handleSettingUpdate(
+                        "autoStartBreaks",
+                        !pomodoroSettings.autoStartBreaks
+                      )
+                    }
+                    className="h-4 w-4 mr-2"
+                  />
+                  <label htmlFor="autoStartBreaks">Auto-start breaks</label>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="autoStartPomodoros"
+                    checked={pomodoroSettings.autoStartPomodoros}
+                    onChange={() =>
+                      handleSettingUpdate(
+                        "autoStartPomodoros",
+                        !pomodoroSettings.autoStartPomodoros
+                      )
+                    }
+                    className="h-4 w-4 mr-2"
+                  />
+                  <label htmlFor="autoStartPomodoros">
+                    Auto-start pomodoros
+                  </label>
+                </div>
               </div>
-            ) : (
-              <ul className="space-y-2">
-                {tasks.map((task) => (
-                  <li
-                    key={task.id}
-                    className={`
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+                >
+                  Done
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full px-2 py-4">
+          {/* Timer Section with Circular Progress */}
+          <div className="flex flex-col items-center justify-center">
+            <div className="relative w-64 h-64 flex items-center justify-center">
+              {/* SVG Circle Progress */}
+              <svg className="absolute w-full h-full" viewBox="0 0 264 264">
+                {/* Background circle */}
+                <circle
+                  cx="132"
+                  cy="132"
+                  r={radius}
+                  fill="transparent"
+                  stroke="#1F2937" // gray-800
+                  strokeWidth="8"
+                />
+                {/* Progress circle */}
+                <circle
+                  cx="132"
+                  cy="132"
+                  r={radius}
+                  fill="transparent"
+                  stroke={timerColor}
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  transform="rotate(-90 132 132)"
+                  style={{ transition: "stroke-dashoffset 0.5s ease" }}
+                />
+              </svg>
+
+              {/* Timer text in the middle */}
+              <div className="z-10 flex flex-col items-center justify-center">
+                <div className="text-5xl flex items-center justify-center">
+                  <span className="font-bold">
+                    {formatTime(timeLeft.minutes)}
+                  </span>
+                  <span className="font-bold">:</span>
+                  <span className="font-bold">
+                    {formatTime(timeLeft.seconds)}
+                  </span>
+                </div>
+                {timeLeft.hours > 0 && (
+                  <div className="text-sm mt-1">
+                    +{timeLeft.hours} {timeLeft.hours === 1 ? "hour" : "hours"}
+                  </div>
+                )}
+                <div className="text-md mt-2 font-medium">{timerType}</div>
+              </div>
+            </div>
+
+            {currentTaskId && (
+              <div className="mt-4 p-2 bg-gray-700 rounded-md text-center">
+                Working on: {tasks.find((t) => t.id === currentTaskId)?.text}
+              </div>
+            )}
+
+            {autoPomodoro && (
+              <div className="mt-2 text-sm text-gray-400">
+                Pomodoro{" "}
+                {(pomodoroCount % pomodoroSettings.longBreakInterval) + 1}
+                of {pomodoroSettings.longBreakInterval} • Next:{" "}
+                {timerType === "Pomodoro"
+                  ? (pomodoroCount + 1) % pomodoroSettings.longBreakInterval ===
+                    0
+                    ? "Long Break"
+                    : "Short Break"
+                  : "Pomodoro"}
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-row gap-6 items-center justify-center">
+              <button
+                className="w-12 h-12 p-2 bg-gray-800 hover:bg-gray-700 rounded-full active:scale-95 hover:scale-105 flex items-center justify-center"
+                onClick={toggleTimer}
+              >
+                {isActive ? <Pause size={24} /> : <Play size={24} />}
+              </button>
+              <button
+                className="w-12 h-12 p-2 bg-gray-800 hover:bg-gray-700 rounded-full active:scale-95 hover:scale-105 flex items-center justify-center"
+                onClick={resetTimer}
+              >
+                <RotateCcw size={24} />
+              </button>
+              {autoPomodoro && (
+                <button
+                  className="text-sm py-1 px-3 bg-gray-800 hover:bg-gray-600 rounded active:scale-95"
+                  onClick={resetPomodoroSequence}
+                >
+                  Reset Sequence
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Tasks Section */}
+          <div className="flex flex-col h-full bg-gray-800 p-4 rounded-lg">
+            <h2 className="text-xl font-bold mb-3">Tasks</h2>
+
+            {/* Add new task */}
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={newTaskText}
+                onChange={(e) => setNewTaskText(e.target.value)}
+                placeholder="Add a new task..."
+                className="flex-1 p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddTask();
+                }}
+              />
+              <button
+                onClick={handleAddTask}
+                className="p-2 bg-blue-600 hover:bg-blue-700 rounded"
+              >
+                <Plus size={20} />
+              </button>
+            </div>
+
+            {/* Task list */}
+            <div className="flex-1 overflow-y-auto">
+              {tasks.length === 0 ? (
+                <div className="text-gray-400 text-center py-4">
+                  No tasks yet. Add one to get started!
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {tasks.map((task) => (
+                    <li
+                      key={task.id}
+                      className={`
                       p-3 rounded-lg flex items-center justify-between
                       ${
                         task.completed
@@ -679,55 +682,56 @@ const TaskTimer = () => {
                       }
                       hover:bg-gray-600 transition-colors
                     `}
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      <button
-                        onClick={() => handleToggleComplete(task.id)}
-                        className="text-gray-300 hover:text-white"
-                      >
-                        {task.completed ? (
-                          <CheckCircle2 size={20} />
-                        ) : (
-                          <Circle size={20} />
-                        )}
-                      </button>
-                      <span className={task.completed ? "line-through" : ""}>
-                        {task.text}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {completedSessions[task.id] > 0 && (
-                        <span className="flex items-center text-sm text-gray-400 gap-1">
-                          <Clock size={14} />
-                          {completedSessions[task.id]}
+                    >
+                      <div className="flex items-center gap-2 flex-1">
+                        <button
+                          onClick={() => handleToggleComplete(task.id)}
+                          className="text-gray-300 hover:text-white"
+                        >
+                          {task.completed ? (
+                            <CheckCircle2 size={20} />
+                          ) : (
+                            <Circle size={20} />
+                          )}
+                        </button>
+                        <span className={task.completed ? "line-through" : ""}>
+                          {task.text}
                         </span>
-                      )}
-                      <button
-                        onClick={() => handleSelectTask(task.id)}
-                        className={`p-1 rounded-md ${
-                          currentTaskId === task.id
-                            ? "bg-blue-600"
-                            : "bg-gray-600"
-                        } hover:bg-blue-500`}
-                      >
-                        <Clock size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTask(task.id)}
-                        className="p-1 text-gray-400 hover:text-red-500"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {completedSessions[task.id] > 0 && (
+                          <span className="flex items-center text-sm text-gray-400 gap-1">
+                            <Clock size={14} />
+                            {completedSessions[task.id]}
+                          </span>
+                        )}
+                        <button
+                          onClick={() => handleSelectTask(task.id)}
+                          className={`p-1 rounded-md ${
+                            currentTaskId === task.id
+                              ? "bg-blue-600"
+                              : "bg-gray-600"
+                          } hover:bg-blue-500`}
+                        >
+                          <Clock size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="p-1 text-gray-400 hover:text-red-500"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </Container>
+      </Container>
+    </div>
   );
 };
 

@@ -1,6 +1,11 @@
 import React from "react";
 
-const Container = ({ children, className = "" }) => {
+interface ContainerProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+const Container: React.FC<ContainerProps> = ({ children, className = "" }) => {
   return (
     <section className="container w-full h-[80vh] flex justify-center items-center">
       <div
